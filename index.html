@@ -48,22 +48,6 @@
       </div>
     </header>
 
-    <section class="panel p-4 space-y-3">
-      <div class="flex items-center justify-between gap-2">
-        <div class="space-y-1">
-          <p class="text-xs uppercase tracking-[0.25em] text-slate-400">идеи</p>
-          <h2 class="text-sm font-semibold text-slate-800">Что можно улучшить</h2>
-        </div>
-        <button id="toggleIdeas" class="ghost-btn text-xs">Показать</button>
-      </div>
-      <ul id="ideasList" class="hidden text-sm text-slate-600 list-disc pl-5 space-y-1">
-        <li>Добавить цветные метки (например, 🎯 для главных и 🎉 для подарков ей/ему).</li>
-        <li>Включить общий режим: один список «мои», второй «её», с быстрым переключением.</li>
-        <li>Подсветить дедлайны: отмечать, что нужно успеть купить к конкретной дате.</li>
-        <li>Завести заметки с размерами/предпочтениями, чтобы не ошибаться при заказе.</li>
-        <li>Поставить напоминание: уведомление/бедж «купить до пятницы».</li>
-      </ul>
-    </section>
 
     <section class="panel p-6 grid gap-4 md:grid-cols-4">
       <div class="md:col-span-2 space-y-2">
@@ -645,16 +629,6 @@
     render();
     saveState();
 
-    // Идеи: показать/спрятать
-    const toggleIdeas = document.getElementById('toggleIdeas');
-    const ideasList = document.getElementById('ideasList');
-    if(toggleIdeas && ideasList){
-      toggleIdeas.addEventListener('click', () => {
-        const isHidden = ideasList.classList.contains('hidden');
-        ideasList.classList.toggle('hidden');
-        toggleIdeas.textContent = isHidden ? 'Скрыть' : 'Показать';
-      });
-    }
   </script>
 </body>
 </html>
