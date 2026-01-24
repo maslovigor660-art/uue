@@ -180,7 +180,8 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'wishlistState-v5';
+    const LEGACY_KEY = 'wishlistState-v5';
+    const STORAGE_KEY = 'wishlistState-v6';
     const defaultData = [
       { id: '399780679', price: 586, store: 'WB', note: '586 руб • WB', imgUrl: '' },
       { id: '10745590', price: 600, store: 'WB', note: '600 руб • WB', imgUrl: '' },
@@ -261,13 +262,29 @@
       return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=${item.store}+${item.id}`;
     };
 
-    function loadState(){
+    function migrateLegacy() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : null;
+        const raw = localStorage.getItem(LEGACY_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        localStorage.removeItem(LEGACY_KEY);
+        return parsed;
       } catch(e){
         return null;
       }
+    }
+
+    function loadState(){
+      const current = (()=>{
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch(e){ return null; }
+      })();
+      if (current) return current;
+      const migrated = migrateLegacy();
+      return migrated || null;
     }
     function saveState(){
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) { console.warn('Не удалось сохранить', e); }
@@ -492,6 +509,12 @@
       } catch(err){
         console.warn('Не удалось загрузить общий список', err);
       }
+    }
+
+    // Принудительно обновим устаревшее состояние, если ключ сменился
+    if(!loadState()) {
+      state = [...defaultData];
+      saveState();
     }
 
     render();
