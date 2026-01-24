@@ -238,12 +238,9 @@
     let viewGrid = true;
     let currentTab = 'active';
     let state = loadState() || [...defaultData];
-    let importInput = null;
     let openedItem = null;
 
     const formatPrice = (p) => Intl.NumberFormat('ru-RU').format(p) + ' ₽';
-    const compress = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-    const decompress = (str) => JSON.parse(decodeURIComponent(escape(atob(str))));
     const buildLink = (item) => {
       if (item.store === 'WB') return `https://www.wildberries.ru/catalog/${item.id}/detail.aspx`;
       if (item.store === 'Ozon') return `https://www.ozon.ru/product/${item.id}/`;
@@ -265,19 +262,15 @@
     };
 
     function loadState(){
-      try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch(e){
+        return null;
+      }
     }
     function saveState(){
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) { console.warn('Не удалось сохранить', e); }
-      updatePermalink();
-    }
-
-    function updatePermalink(){
-      const payload = { items: state };
-      const token = compress(payload);
-      const link = `${SHARE_BASE}?d=${encodeURIComponent(token)}`;
-      permalinkInput.value = link;
-      try { history.replaceState(null, '', link); } catch(e) { /* fall back silently */ }
     }
 
     function showDetail(item) {
@@ -489,7 +482,7 @@
     const shared = urlParams.get('d');
     if(shared){
       try {
-        const data = decompress(shared);
+        const data = JSON.parse(atob(shared));
         if(Array.isArray(data.items)){
           state = data.items;
           saveState();
@@ -501,7 +494,6 @@
       }
     }
 
-    updatePermalink();
     render();
     saveState();
   </script>
