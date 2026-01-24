@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мини-вишлист</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root { color-scheme: light; }
+    body { background: #f8fafc; }
+    .panel { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; }
+    .card { border: 1px solid #e2e8f0; border-radius: 14px; transition: border-color .15s ease, background .15s ease, transform .15s ease; background: #fff; }
+    .card:hover { border-color: #4f46e5; background: #f9fbff; transform: translateY(-1px); }
+    .pill { border: 1px solid #e2e8f0; border-radius: 9999px; background: #fff; padding: 8px 12px; color: #0f172a; }
+    .pill-active { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #f8fafc; border-color: transparent; }
+    .input { border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; padding: 10px 12px; }
+    .ghost-btn { border: 1px solid #e2e8f0; border-radius: 12px; padding: 9px 12px; background: #fff; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+    .ghost-btn:hover { background: #0ea5e9; color: #f8fafc; border-color: #0ea5e9; }
+    .badge { background: #eef2ff; color: #4338ca; border-radius: 9999px; padding: 4px 10px; font-size: 12px; }
+    .muted { color: #94a3b8; }
+    .modal { backdrop-filter: blur(8px); }
+  </style>
+</head>
+<body class="text-slate-900 min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <header class="panel p-6 flex flex-col gap-4">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="space-y-1">
+          <p class="uppercase tracking-[0.25em] text-xs text-slate-400">wishlist</p>
+          <h1 class="text-3xl font-semibold">Минималистичный список хотелок</h1>
+          <p class="text-sm text-slate-500">Поиск, фильтры, отметки купленного и быстрый просмотр деталей без лишнего шума.</p>
+        </div>
+        <div class="w-full md:w-auto flex flex-col gap-2 items-start md:items-end">
+          <div class="flex flex-wrap gap-2">
+            <button id="exportData" class="ghost-btn text-sm text-emerald-700 border-emerald-200">Экспорт</button>
+            <button id="importData" class="ghost-btn text-sm text-emerald-700 border-emerald-200">Импорт</button>
+            <button id="shareLink" class="ghost-btn text-sm text-emerald-700 border-emerald-200">Ссылка для двоих</button>
+            <details class="hint">
+              <summary class="ghost-btn text-sm flex items-center gap-2 select-none"><span>ℹ️</span><span>Подсказка</span></summary>
+              <div class="absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-sm p-3 text-xs text-slate-600 space-y-1">
+                <p class="font-semibold text-slate-900">Как поделиться / импортировать / экспортировать</p>
+                <ol class="list-decimal list-inside space-y-1">
+                  <li><strong>Экспорт</strong>: нажми «Экспорт», скачай wishlist.json и отправь его.</li>
+                  <li><strong>Импорт</strong>: нажми «Импорт», выбери файл wishlist.json — список загрузится.</li>
+                  <li><strong>Ссылка для двоих</strong>: нажми кнопку, ссылка скопируется. Вставь её в браузер на другом ПК — список откроется и сохранится. Если что-то поменял, создай новую ссылку.</li>
+                </ol>
+              </div>
+            </details>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="toggleView" class="ghost-btn text-sm flex items-center gap-2"><span class="icon">🔲</span><span>Сетка</span></button>
+            <button id="clearBought" class="ghost-btn text-sm">Сбросить отметки</button>
+            <button id="deleteBought" class="ghost-btn text-sm text-red-600 border-red-200">Удалить купленные</button>
+            <button id="restoreDefaults" class="ghost-btn text-sm text-indigo-600 border-indigo-200">Вернуть мои товары</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel p-6 grid gap-4 md:grid-cols-4">
+      <div class="md:col-span-2 space-y-2">
+        <label class="text-sm text-slate-600 flex flex-col gap-2">Поиск (артикул, магазин, заметка)
+          <input id="search" type="text" placeholder="например: WB или 24к" class="input w-full" />
+        </label>
+        <div class="flex gap-2 flex-wrap" aria-label="Фильтр по магазину">
+          <button data-store="all" class="storeBtn pill pill-active text-sm px-3 py-2" aria-pressed="true">Все</button>
+          <button data-store="WB" class="storeBtn pill text-sm px-3 py-2" aria-pressed="false">WB</button>
+          <button data-store="Ozon" class="storeBtn pill text-sm px-3 py-2" aria-pressed="false">Ozon</button>
+          <button data-store="Yandex" class="storeBtn pill text-sm px-3 py-2" aria-pressed="false">Я.Маркет</button>
+          <button data-store="Другое" class="storeBtn pill text-sm px-3 py-2" aria-pressed="false">Другое</button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm text-slate-600">Бюджет до: <span id="budgetLabel" class="font-semibold text-slate-900">∞</span></label>
+        <input id="budget" type="range" min="400" max="25000" step="100" value="25000" class="w-full accent-indigo-600">
+        <p class="text-xs text-slate-500">Спрячь позиции дороже выбранной суммы.</p>
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm text-slate-600">Сортировка</label>
+        <select id="sort" class="input w-full">
+          <option value="none">Без сортировки</option>
+          <option value="price">По цене (↑)</option>
+          <option value="priceDesc">По цене (↓)</option>
+          <option value="store">По магазину</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel p-6 space-y-3">
+      <p class="text-sm text-slate-600">Добавить своё желание</p>
+      <div class="grid md:grid-cols-6 gap-3">
+        <input id="newId" class="input" placeholder="Артикул" aria-label="Артикул" />
+        <input id="newPrice" class="input" placeholder="Цена (напр. 1200)" aria-label="Цена" />
+        <select id="newStore" class="input" aria-label="Магазин">
+          <option>WB</option>
+          <option>Ozon</option>
+          <option>Yandex</option>
+          <option>Другое</option>
+        </select>
+        <input id="newNote" class="input" placeholder="Комментарий / ссылка" aria-label="Комментарий или ссылка" />
+        <input id="newImg" class="input" placeholder="Картинка (URL)" aria-label="Ссылка на картинку" />
+        <button id="addItem" class="ghost-btn text-sm font-semibold">Добавить</button>
+      </div>
+    </section>
+
+    <section class="panel p-6 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h2 class="text-lg font-semibold">Список желаний</h2>
+          <div class="flex items-center gap-2">
+            <button data-tab="active" class="tabBtn pill pill-active text-sm px-3 py-2">Активные</button>
+            <button data-tab="bought" class="tabBtn pill text-sm px-3 py-2">Купленные</button>
+          </div>
+        </div>
+        <p class="text-sm text-slate-500">Куплено: <span id="doneCount" class="font-semibold text-slate-900">0</span>/<span id="totalCount"></span></p>
+      </div>
+      <div class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 flex flex-wrap items-center gap-3">
+        <span>Видимых: <span id="visibleCount" class="font-semibold text-slate-900">0</span></span>
+        <span>Сумма: <span id="visibleSum" class="font-semibold text-slate-900">0 ₽</span></span>
+      </div>
+      <div id="emptyState" class="hidden text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">Все желания выполнены или скрыты фильтрами.</div>
+      <div id="list" class="grid gap-4 md:grid-cols-3"></div>
+    </section>
+  </div>
+
+  <template id="cardTemplate">
+    <article class="card p-4 flex flex-col gap-3 bg-white cursor-pointer">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-500 text-white flex items-center justify-center text-lg">🎁</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400 store"></p>
+          <h3 class="text-lg font-semibold leading-tight truncate">Артикул <span class="id"></span></h3>
+          <p class="text-sm text-slate-600 font-medium price"></p>
+        </div>
+        <label class="text-xs text-slate-600 flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" class="bought accent-indigo-600 w-4 h-4"> куплено
+        </label>
+      </div>
+      <div class="h-44 rounded-xl overflow-hidden bg-slate-100 relative">
+        <img class="img w-full h-full object-cover" alt="Предмет" loading="lazy">
+        <div class="absolute top-2 right-2 flex gap-1">
+          <button class="pill text-xs px-3 py-1 open">Открыть</button>
+          <button class="pill text-xs px-3 py-1 copy">Копировать</button>
+          <button class="pill text-xs px-3 py-1 delete text-red-600 border-red-200">Удалить</button>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 text-sm text-slate-600">
+        <span class="px-3 py-1 rounded-xl bg-slate-100 note"></span>
+        <button class="px-3 py-1 rounded-xl bg-slate-100 text-xs priority">☆ Приоритет</button>
+        <span class="badge store-badge"></span>
+      </div>
+    </article>
+  </template>
+
+  <div id="detail" class="hidden fixed inset-0 z-20 flex items-center justify-center px-4 modal">
+    <div class="absolute inset-0 bg-slate-900/40"></div>
+    <div class="relative w-full max-w-3xl bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden">
+      <div class="flex flex-col md:flex-row">
+        <div class="md:w-1/2 bg-slate-50">
+          <img id="detailImg" class="w-full h-80 md:h-full object-cover" alt="Детали товара">
+        </div>
+        <div class="md:w-1/2 p-6 space-y-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p id="detailStore" class="text-xs uppercase tracking-[0.25em] text-slate-400"></p>
+              <h3 id="detailTitle" class="text-2xl font-semibold leading-tight"></h3>
+              <p id="detailPrice" class="text-lg font-semibold text-indigo-600"></p>
+            </div>
+            <button id="closeDetail" class="ghost-btn text-sm">✕</button>
+          </div>
+          <p id="detailNote" class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3"></p>
+          <div class="space-y-2">
+            <label class="text-sm text-slate-700 flex flex-col gap-2">Картинка (URL)
+              <input id="detailImgInput" class="input" placeholder="https://...">
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <button id="detailImgSave" class="ghost-btn text-sm">Сохранить картинку</button>
+              <button id="detailImgReset" class="ghost-btn text-sm">Сбросить</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 text-sm">
+            <span class="badge">ID: <span id="detailId"></span></span>
+            <button id="detailOpen" class="ghost-btn text-sm">Открыть ссылку</button>
+            <button id="detailCopy" class="ghost-btn text-sm">Скопировать</button>
+            <button id="detailDelete" class="ghost-btn text-sm text-red-600 border-red-200">Удалить товар</button>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" id="detailBought" class="accent-indigo-600"> Отметить купленным
+          </label>
+          <div class="flex gap-2 flex-wrap">
+            <button id="detailPriority" class="ghost-btn text-sm">☆ Приоритет</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'wishlistState-v5';
+    const SHARE_BASE = (() => {
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.hash = '';
+      return url.toString();
+    })(); // строим ссылку от текущей страницы (подходит для live-server и любого домена)
+    const defaultData = [
+      { id: '399780679', price: 586, store: 'WB', note: '586 руб • WB', imgUrl: '' },
+      { id: '10745590', price: 600, store: 'WB', note: '600 руб • WB', imgUrl: '' },
+      { id: '180728245', price: 24000, store: 'WB', note: '24к • WB', imgUrl: '' },
+      { id: '232756080', price: 5300, store: 'WB', note: '5.3к • WB', imgUrl: '' },
+      { id: '230723895', price: 8500, store: 'WB', note: '8.5к • WB', imgUrl: '' },
+      { id: '346787806', price: 8600, store: 'WB', note: '8.6к • WB', imgUrl: '' },
+      { id: '525001446', price: 500, store: 'WB', note: '500 руб • WB', imgUrl: '' },
+      { id: '2865108808', price: 2300, store: 'Ozon', note: '2.3к • Ozon', imgUrl: '' },
+      { id: '425483427', price: 500, store: 'Ozon', note: '500 руб • Ozon', imgUrl: '' },
+      { id: '3331966421', price: 2300, store: 'Ozon', note: '2.3к • Ozon', imgUrl: '' },
+      { id: '905502090', price: 4000, store: 'Ozon', note: '4к • Ozon', imgUrl: '' },
+    ];
+
+    const listEl = document.getElementById('list');
+    const tpl = document.getElementById('cardTemplate');
+    const searchEl = document.getElementById('search');
+    const budgetEl = document.getElementById('budget');
+    const budgetLabel = document.getElementById('budgetLabel');
+    const sortEl = document.getElementById('sort');
+    const storeBtns = document.querySelectorAll('.storeBtn');
+    const totalCountEl = document.getElementById('totalCount');
+    const doneCountEl = document.getElementById('doneCount');
+    const toggleViewBtn = document.getElementById('toggleView');
+    const clearBoughtBtn = document.getElementById('clearBought');
+    const deleteBoughtBtn = document.getElementById('deleteBought');
+    const exportDataBtn = document.getElementById('exportData');
+    const importDataBtn = document.getElementById('importData');
+    const shareLinkBtn = document.getElementById('shareLink');
+    const tabBtns = document.querySelectorAll('.tabBtn');
+    const emptyState = document.getElementById('emptyState');
+
+    const newId = document.getElementById('newId');
+    const newPrice = document.getElementById('newPrice');
+    const newStore = document.getElementById('newStore');
+    const newNote = document.getElementById('newNote');
+    const newImg = document.getElementById('newImg');
+    const addItem = document.getElementById('addItem');
+
+    const detail = document.getElementById('detail');
+    const detailImg = document.getElementById('detailImg');
+    const detailStore = document.getElementById('detailStore');
+    const detailTitle = document.getElementById('detailTitle');
+    const detailPrice = document.getElementById('detailPrice');
+    const detailNote = document.getElementById('detailNote');
+    const detailId = document.getElementById('detailId');
+    const detailOpen = document.getElementById('detailOpen');
+    const detailCopy = document.getElementById('detailCopy');
+    const detailBought = document.getElementById('detailBought');
+    const detailPriority = document.getElementById('detailPriority');
+    const closeDetail = document.getElementById('closeDetail');
+    const detailImgInput = document.getElementById('detailImgInput');
+    const detailImgSave = document.getElementById('detailImgSave');
+    const detailImgReset = document.getElementById('detailImgReset');
+    const detailDelete = document.getElementById('detailDelete');
+
+    let currentStore = 'all';
+    let viewGrid = true;
+    let currentTab = 'active';
+    let state = loadState() || [...defaultData];
+    let importInput = null;
+    let openedItem = null;
+
+    const formatPrice = (p) => Intl.NumberFormat('ru-RU').format(p) + ' ₽';
+    const compress = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    const decompress = (str) => JSON.parse(decodeURIComponent(escape(atob(str))));
+    const buildLink = (item) => {
+      if (item.store === 'WB') return `https://www.wildberries.ru/catalog/${item.id}/detail.aspx`;
+      if (item.store === 'Ozon') return `https://www.ozon.ru/product/${item.id}/`;
+      if (item.store === 'Yandex') return `https://market.yandex.ru/product--/${item.id}`;
+      if (item.store === 'Другое') return item.note && item.note.startsWith('http') ? item.note : `https://www.google.com/search?q=${encodeURIComponent(item.id)}`;
+      return item.note && item.note.startsWith('http') ? item.note : `https://www.google.com/search?q=${encodeURIComponent(item.id)}`;
+    };
+    const buildImg = (item) => {
+      if (item.imgUrl && item.imgUrl.trim()) return item.imgUrl;
+      if(item.store === 'WB') {
+        const vol = item.id.slice(0, 3);
+        const part = item.id.slice(0, 5);
+        return `https://basket-0.wbbasket.ru/vol${vol}/part${part}/${item.id}/images/big/1.jpg`;
+      }
+      if(item.store === 'Ozon') return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=Ozon+${item.id}`;
+      if(item.store === 'Yandex') return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=Yandex+${item.id}`;
+      if(item.store === 'Другое') return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=${item.store}+${item.id}`;
+      return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=${item.store}+${item.id}`;
+    };
+
+    function loadState(){
+      try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+    }
+    function saveState(){
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) { console.warn('Не удалось сохранить', e); }
+    }
+
+    function showDetail(item) {
+      openedItem = item;
+      detailImg.src = buildImg(item);
+      detailImgInput.value = item.imgUrl || '';
+      detailStore.textContent = item.store;
+      detailTitle.textContent = `Артикул ${item.id}`;
+      detailPrice.textContent = formatPrice(item.price);
+      detailNote.textContent = item.note || 'Без заметки';
+      detailId.textContent = item.id;
+      detailBought.checked = !!item.bought;
+      detailPriority.textContent = item.priority ? '⭐ Приоритет' : '☆ Приоритет';
+      const link = buildLink(item);
+      detailOpen.onclick = () => window.open(link, '_blank');
+      detailCopy.onclick = async () => {
+        await navigator.clipboard.writeText(link);
+        detailCopy.textContent = 'Скопировано';
+        setTimeout(()=> detailCopy.textContent = 'Скопировать', 1200);
+      };
+      detailImgSave.onclick = () => {
+        const val = detailImgInput.value.trim();
+        item.imgUrl = val || '';
+        detailImg.src = buildImg(item);
+        saveState();
+        render();
+      };
+      detailImgReset.onclick = () => {
+        item.imgUrl = '';
+        detailImgInput.value = '';
+        detailImg.src = buildImg(item);
+        saveState();
+        render();
+      };
+      detailBought.onchange = () => { item.bought = detailBought.checked; updateCount(); saveState(); render(); };
+      detailPriority.onclick = () => { item.priority = !item.priority; detailPriority.textContent = item.priority ? '⭐ Приоритет' : '☆ Приоритет'; saveState(); render(); };
+      detailDelete.onclick = () => {
+        state = state.filter(x => x !== item);
+        saveState();
+        render();
+        hideDetail();
+      };
+      detail.classList.remove('hidden');
+    }
+
+    function hideDetail() {
+      detail.classList.add('hidden');
+      openedItem = null;
+    }
+
+    function render() {
+      listEl.innerHTML = '';
+      const search = searchEl.value.trim().toLowerCase();
+      const budget = Number(budgetEl.value);
+
+      let items = state.filter(i => {
+        const matchStore = currentStore === 'all' || i.store === currentStore;
+        const matchSearch = [i.id, i.store, i.note || ''].some(v => v.toLowerCase().includes(search));
+        const matchBudget = i.price <= budget;
+        const matchTab = currentTab === 'active' ? !i.bought : !!i.bought;
+        return matchStore && matchSearch && matchBudget && matchTab;
+      });
+
+      if (sortEl.value === 'price') items.sort((a,b)=>a.price-b.price);
+      if (sortEl.value === 'priceDesc') items.sort((a,b)=>b.price-a.price);
+      if (sortEl.value === 'store') items.sort((a,b)=>a.store.localeCompare(b.store));
+
+      listEl.className = viewGrid ? 'grid gap-4 md:grid-cols-3' : 'grid gap-4';
+
+      emptyState.classList.toggle('hidden', items.length !== 0);
+      document.getElementById('visibleCount').textContent = items.length;
+      const sum = items.reduce((acc, cur)=>acc + (cur.price || 0), 0);
+      document.getElementById('visibleSum').textContent = sum ? formatPrice(sum).replace(' ₽',' ₽') : '0 ₽';
+
+      items.forEach(item => {
+        const clone = tpl.content.firstElementChild.cloneNode(true);
+        clone.querySelector('.store').textContent = item.store;
+        clone.querySelector('.store-badge').textContent = item.store;
+        clone.querySelector('.id').textContent = item.id;
+        clone.querySelector('.price').textContent = formatPrice(item.price);
+        clone.querySelector('.note').textContent = item.note || 'Без заметки';
+        const img = clone.querySelector('.img');
+        img.src = buildImg(item);
+        img.onerror = () => img.src = `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=${item.store}+${item.id}`;
+        const link = buildLink(item);
+        clone.querySelector('.open').onclick = (e) => { e.stopPropagation(); window.open(link, '_blank'); };
+        clone.querySelector('.copy').onclick = async (e) => {
+          e.stopPropagation();
+          await navigator.clipboard.writeText(link);
+          const btn = clone.querySelector('.copy');
+          btn.textContent = 'Скопировано';
+          setTimeout(()=> btn.textContent = 'Копировать', 1200);
+        };
+        const deleteBtn = clone.querySelector('.delete');
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          state = state.filter(x => x !== item);
+          saveState();
+          render();
+        };
+        const priorityBtn = clone.querySelector('.priority');
+        const setPriorityStyle = () => {
+          if(item.priority) {
+            clone.classList.add('ring-2','ring-indigo-500');
+            priorityBtn.textContent = '⭐ Приоритет';
+          } else {
+            clone.classList.remove('ring-2','ring-indigo-500');
+            priorityBtn.textContent = '☆ Приоритет';
+          }
+        };
+        setPriorityStyle();
+        priorityBtn.onclick = (e) => {
+          e.stopPropagation();
+          item.priority = !item.priority;
+          setPriorityStyle();
+          saveState();
+          render();
+        };
+        const bought = clone.querySelector('.bought');
+        bought.checked = !!item.bought;
+        bought.onchange = (e) => {
+          e.stopPropagation();
+          item.bought = bought.checked;
+          updateCount();
+          saveState();
+          render();
+        };
+        clone.onclick = () => showDetail(item);
+        listEl.appendChild(clone);
+      });
+      totalCountEl.textContent = state.length;
+      updateCount();
+    }
+
+    function updateCount() {
+      const done = state.filter(i=>i.bought).length;
+      doneCountEl.textContent = done;
+      emptyState.classList.toggle('hidden', !(currentTab === 'bought' && done === 0));
+    }
+
+    storeBtns.forEach(btn => {
+      btn.onclick = () => {
+        currentStore = btn.dataset.store;
+        storeBtns.forEach(b=>{
+          b.classList.remove('pill-active');
+          b.setAttribute('aria-pressed','false');
+        });
+        btn.classList.add('pill-active');
+        btn.setAttribute('aria-pressed','true');
+        render();
+      };
+    });
+
+    searchEl.oninput = render;
+    budgetEl.oninput = () => { budgetLabel.textContent = budgetEl.value >= 25000 ? '∞' : formatPrice(Number(budgetEl.value)); render(); };
+    sortEl.onchange = render;
+
+    toggleViewBtn.onclick = () => {
+      viewGrid = !viewGrid;
+      toggleViewBtn.querySelector('span.icon').textContent = viewGrid ? '🔲' : '📄';
+      toggleViewBtn.querySelector('span:last-child').textContent = viewGrid ? 'Сетка' : 'Список';
+      render();
+    };
+
+    clearBoughtBtn.onclick = () => {
+      state.forEach(i=>i.bought=false);
+      saveState();
+      render();
+    };
+
+    deleteBoughtBtn.onclick = () => {
+      if(!confirm('Удалить все купленные товары?')) return;
+      state = state.filter(i=>!i.bought);
+      saveState();
+      render();
+      hideDetail();
+    };
+
+    const restoreDefaultsBtn = document.getElementById('restoreDefaults');
+    restoreDefaultsBtn.onclick = () => {
+      if(!confirm('Вернуть стартовый список твоих товаров? Текущие изменения будут потеряны.')) return;
+      state = [...defaultData];
+      saveState();
+      render();
+      hideDetail();
+    };
+
+    exportDataBtn.onclick = async () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'wishlist.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    importDataBtn.onclick = () => {
+      if(importInput) importInput.remove();
+      importInput = document.createElement('input');
+      importInput.type = 'file';
+      importInput.accept = 'application/json';
+      importInput.style.display = 'none';
+      importInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if(!Array.isArray(data)) throw new Error('Неверный формат');
+            state = data.map(item => ({
+              id: String(item.id || '').trim(),
+              price: Number(item.price)||0,
+              store: item.store || 'Другое',
+              note: item.note || '',
+              imgUrl: item.imgUrl || '',
+              bought: !!item.bought,
+              priority: !!item.priority,
+            })).filter(x=>x.id);
+            saveState();
+            render();
+            hideDetail();
+            alert('Импорт завершён');
+          } catch(err){
+            alert('Ошибка импорта: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      };
+      document.body.appendChild(importInput);
+      importInput.click();
+    };
+
+    shareLinkBtn.onclick = async () => {
+      const payload = { items: state };
+      const token = compress(payload);
+      const link = `${SHARE_BASE}?d=${encodeURIComponent(token)}`;
+      await navigator.clipboard.writeText(link);
+      shareLinkBtn.textContent = 'Скопировано!';
+      setTimeout(()=> shareLinkBtn.textContent = 'Ссылка для двоих', 1500);
+      alert('Ссылка скопирована. Отправь её, чтобы открыть список на другом устройстве.');
+    };
+
+    tabBtns.forEach(btn => {
+      btn.onclick = () => {
+        currentTab = btn.dataset.tab;
+        tabBtns.forEach(b=>b.classList.remove('pill-active'));
+        btn.classList.add('pill-active');
+        render();
+      };
+    });
+
+    addItem.onclick = () => {
+      if(!newId.value || !newPrice.value) return alert('Заполни артикул и цену');
+      state.push({ id: newId.value.trim(), price: Number(newPrice.value)||0, store: newStore.value, note: newNote.value.trim(), imgUrl: newImg.value.trim() });
+      newId.value = newPrice.value = newNote.value = newImg.value = '';
+      saveState();
+      render();
+    };
+
+    closeDetail.onclick = hideDetail;
+    detail.addEventListener('click', (e)=>{ if(e.target === detail) hideDetail(); });
+
+    const urlParams = new URLSearchParams(location.search);
+    const shared = urlParams.get('d');
+    if(shared){
+      try {
+        const data = decompress(shared);
+        if(Array.isArray(data.items)){
+          state = data.items;
+          saveState();
+          render();
+          alert('Загружен общий список. Теперь он сохранён локально.');
+        }
+      } catch(err){
+        console.warn('Не удалось загрузить общий список', err);
+      }
+    }
+
+    render();
+    saveState();
+  </script>
+</body>
+</html>
