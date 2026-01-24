@@ -32,30 +32,6 @@
         </div>
         <div class="w-full md:w-auto flex flex-col gap-2 items-start md:items-end">
           <div class="flex flex-wrap gap-2">
-            <button id="exportData" class="ghost-btn text-sm text-emerald-700 border-emerald-200">Экспорт</button>
-            <button id="importData" class="ghost-btn text-sm text-emerald-700 border-emerald-200">Импорт</button>
-            <button id="shareLink" class="ghost-btn text-sm text-emerald-700 border-emerald-200">Ссылка для двоих</button>
-            <details class="hint">
-              <summary class="ghost-btn text-sm flex items-center gap-2 select-none"><span>ℹ️</span><span>Подсказка</span></summary>
-              <div class="absolute right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-sm p-3 text-xs text-slate-600 space-y-1">
-                <p class="font-semibold text-slate-900">Как включить Pages и делиться</p>
-                <ol class="list-decimal list-inside space-y-1">
-                  <li><strong>Включить Pages</strong>: Settings → Pages → Source: Deploy from a branch → Branch: main → Folder: /root → Save. Репозиторий должен быть публичным.</li>
-                  <li><strong>Дождаться публикации</strong>: через 1–3 минуты в Settings → Pages появится URL. Твой адрес:<br><span class="text-slate-900 font-semibold break-all">https://maslovigor660-art.github.io/uue/</span></li>
-                  <li><strong>Если 404</strong>: проверь, что index.html лежит в корне ветки main, Pages выбрано main /root, репо публичный. Нажми Save ещё раз и подожди минуту, потом открой URL (с завершающим слэшем).</li>
-                  <li><strong>Экспорт</strong>: «Экспорт» → скачай wishlist.json → отправь файл.</li>
-                  <li><strong>Импорт</strong>: «Импорт» → выбери wishlist.json → список загрузится.</li>
-                  <li><strong>Ссылка для двоих</strong>: зайди на адрес выше, нажми «Ссылка для двоих», скопируй и открой на другом ПК — список сохранится там. При изменениях создавай новую ссылку.</li>
-                </ol>
-              </div>
-            </details>
-          </div>
-          <div class="w-full flex items-center gap-2">
-            <input id="permalink" class="input text-xs flex-1 min-w-[220px]" readonly placeholder="Глобальная ссылка (обновляется)" />
-            <button id="copyPermalink" class="ghost-btn text-xs">Скопировать</button>
-            <span class="text-[11px] text-slate-400">для открытия на другом ПК</span>
-          </div>
-          <div class="flex flex-wrap gap-2">
             <button id="toggleView" class="ghost-btn text-sm flex items-center gap-2"><span class="icon">🔲</span><span>Сетка</span></button>
             <button id="clearBought" class="ghost-btn text-sm">Сбросить отметки</button>
             <button id="deleteBought" class="ghost-btn text-sm text-red-600 border-red-200">Удалить купленные</button>
@@ -205,12 +181,6 @@
 
   <script>
     const STORAGE_KEY = 'wishlistState-v5';
-    const SHARE_BASE = (() => {
-      const url = new URL(window.location.href);
-      url.search = '';
-      url.hash = '';
-      return url.toString();
-    })(); // строим ссылку от текущей страницы (используйте опубликованный URL, например GitHub Pages)
     const defaultData = [
       { id: '399780679', price: 586, store: 'WB', note: '586 руб • WB', imgUrl: '' },
       { id: '10745590', price: 600, store: 'WB', note: '600 руб • WB', imgUrl: '' },
@@ -237,11 +207,6 @@
     const toggleViewBtn = document.getElementById('toggleView');
     const clearBoughtBtn = document.getElementById('clearBought');
     const deleteBoughtBtn = document.getElementById('deleteBought');
-    const exportDataBtn = document.getElementById('exportData');
-    const importDataBtn = document.getElementById('importData');
-    const shareLinkBtn = document.getElementById('shareLink');
-    const permalinkInput = document.getElementById('permalink');
-    const copyPermalinkBtn = document.getElementById('copyPermalink');
     const tabBtns = document.querySelectorAll('.tabBtn');
     const emptyState = document.getElementById('emptyState');
 
@@ -498,69 +463,6 @@
       saveState();
       render();
       hideDetail();
-    };
-
-    exportDataBtn.onclick = async () => {
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'wishlist.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    };
-
-    importDataBtn.onclick = () => {
-      if(importInput) importInput.remove();
-      importInput = document.createElement('input');
-      importInput.type = 'file';
-      importInput.accept = 'application/json';
-      importInput.style.display = 'none';
-      importInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          try {
-            const data = JSON.parse(ev.target.result);
-            if(!Array.isArray(data)) throw new Error('Неверный формат');
-            state = data.map(item => ({
-              id: String(item.id || '').trim(),
-              price: Number(item.price)||0,
-              store: item.store || 'Другое',
-              note: item.note || '',
-              imgUrl: item.imgUrl || '',
-              bought: !!item.bought,
-              priority: !!item.priority,
-            })).filter(x=>x.id);
-            saveState();
-            render();
-            hideDetail();
-            alert('Импорт завершён');
-          } catch(err){
-            alert('Ошибка импорта: ' + err.message);
-          }
-        };
-        reader.readAsText(file);
-      };
-      document.body.appendChild(importInput);
-      importInput.click();
-    };
-
-    shareLinkBtn.onclick = async () => {
-      updatePermalink();
-      const link = permalinkInput.value;
-      await navigator.clipboard.writeText(link);
-      shareLinkBtn.textContent = 'Скопировано!';
-      setTimeout(()=> shareLinkBtn.textContent = 'Ссылка для двоих', 1500);
-      alert('Ссылка скопирована. Отправь её, чтобы открыть список на другом устройстве.');
-    };
-
-    copyPermalinkBtn.onclick = async () => {
-      if(!permalinkInput.value) updatePermalink();
-      await navigator.clipboard.writeText(permalinkInput.value);
-      copyPermalinkBtn.textContent = 'Скопировано';
-      setTimeout(()=> copyPermalinkBtn.textContent = 'Скопировать', 1200);
     };
 
     tabBtns.forEach(btn => {
