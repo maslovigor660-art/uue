@@ -241,6 +241,18 @@
     let state = loadState() || [...defaultData];
     let openedItem = null;
 
+    function fixMojibake() {
+      let changed = false;
+      state.forEach(item => {
+        if (!item.note) return;
+        if (/[ÂÃÐÑâ]/.test(item.note)) {
+          item.note = `${item.price} руб • ${item.store}`;
+          changed = true;
+        }
+      });
+      if (changed) saveState();
+    }
+
     const formatPrice = (p) => Intl.NumberFormat('ru-RU').format(p) + ' ₽';
     const buildLink = (item) => {
       if (item.store === 'WB') return `https://www.wildberries.ru/catalog/${item.id}/detail.aspx`;
@@ -517,6 +529,7 @@
       saveState();
     }
 
+    fixMojibake();
     render();
     saveState();
   </script>
