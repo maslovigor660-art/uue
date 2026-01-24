@@ -29,18 +29,41 @@
         <div class="space-y-1">
           <p class="uppercase tracking-[0.25em] text-xs text-slate-400">wishlist</p>
           <h1 class="text-3xl font-semibold">Минималистичный список хотелок</h1>
-          <p class="text-sm text-slate-500">Поиск, фильтры, отметки купленного и быстрый просмотр деталей без лишнего шума.</p>
+          <p class="text-sm text-slate-500">Два списка: Игоря и Полины. Поиск, фильтры, отметки купленного и детали товара.</p>
         </div>
         <div class="w-full md:w-auto flex flex-col gap-2 items-start md:items-end">
           <div class="flex flex-wrap gap-2">
             <button id="toggleView" class="ghost-btn text-sm flex items-center gap-2"><span class="icon">🔲</span><span>Сетка</span></button>
             <button id="clearBought" class="ghost-btn text-sm">Сбросить отметки</button>
             <button id="deleteBought" class="ghost-btn text-sm text-red-600 border-red-200">Удалить купленные</button>
-            <button id="restoreDefaults" class="ghost-btn text-sm text-indigo-600 border-indigo-200">Вернуть мои товары</button>
+            <button id="restoreDefaults" class="ghost-btn text-sm text-indigo-600 border-indigo-200">Сбросить текущий список</button>
           </div>
         </div>
       </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs uppercase tracking-[0.25em] text-slate-400">режим</span>
+        <button data-owner="me" class="ownerBtn pill pill-active text-sm px-3 py-2">Игорь</button>
+        <button data-owner="her" class="ownerBtn pill text-sm px-3 py-2">Полина</button>
+        <span class="text-xs text-slate-500">Переключайтесь между списками</span>
+      </div>
     </header>
+
+    <section class="panel p-4 space-y-3">
+      <div class="flex items-center justify-between gap-2">
+        <div class="space-y-1">
+          <p class="text-xs uppercase tracking-[0.25em] text-slate-400">идеи</p>
+          <h2 class="text-sm font-semibold text-slate-800">Что можно улучшить</h2>
+        </div>
+        <button id="toggleIdeas" class="ghost-btn text-xs">Показать</button>
+      </div>
+      <ul id="ideasList" class="hidden text-sm text-slate-600 list-disc pl-5 space-y-1">
+        <li>Добавить цветные метки (например, 🎯 для главных и 🎉 для подарков ей/ему).</li>
+        <li>Включить общий режим: один список «мои», второй «её», с быстрым переключением.</li>
+        <li>Подсветить дедлайны: отмечать, что нужно успеть купить к конкретной дате.</li>
+        <li>Завести заметки с размерами/предпочтениями, чтобы не ошибаться при заказе.</li>
+        <li>Поставить напоминание: уведомление/бедж «купить до пятницы».</li>
+      </ul>
+    </section>
 
     <section class="panel p-6 grid gap-4 md:grid-cols-4">
       <div class="md:col-span-2 space-y-2">
@@ -102,6 +125,7 @@
       <div class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 flex flex-wrap items-center gap-3">
         <span>Видимых: <span id="visibleCount" class="font-semibold text-slate-900">0</span></span>
         <span>Сумма: <span id="visibleSum" class="font-semibold text-slate-900">0 ₽</span></span>
+        <span class="text-xs text-slate-400">Режим: <span id="ownerLabel" class="font-semibold text-slate-700">Игорь</span></span>
       </div>
       <div id="emptyState" class="hidden text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">Все желания выполнены или скрыты фильтрами.</div>
       <div id="list" class="grid gap-4 md:grid-cols-3"></div>
@@ -182,7 +206,9 @@
 
   <script>
     const LEGACY_KEY = 'wishlistState-v5';
-    const STORAGE_KEY = 'wishlistState-v6';
+    const STORAGE_KEY = 'wishlistShared-v9';
+    const ownerNames = { me: 'Игорь', her: 'Полина' };
+
     const defaultData = [
       { id: '399780679', price: 586, store: 'WB', note: '586 руб • WB', imgUrl: '' },
       { id: '10745590', price: 600, store: 'WB', note: '600 руб • WB', imgUrl: '' },
@@ -195,6 +221,29 @@
       { id: '425483427', price: 500, store: 'Ozon', note: '500 руб • Ozon', imgUrl: '' },
       { id: '3331966421', price: 2300, store: 'Ozon', note: '2.3к • Ozon', imgUrl: '' },
       { id: '905502090', price: 4000, store: 'Ozon', note: '4к • Ozon', imgUrl: '' },
+    ];
+
+    const herDefaultData = [
+      { id: '231709281', price: 1500, store: 'WB', note: '1500 руб • WB', imgUrl: '' },
+      { id: '622426207', price: 1900, store: 'WB', note: 'Парные • 1900 руб • WB', imgUrl: '' },
+      { id: '179914039', price: 326, store: 'WB', note: '326 руб • WB', imgUrl: '' },
+      { id: '208527917', price: 376, store: 'WB', note: 'Похоже на 208527917 • 376 руб • WB', imgUrl: '' },
+      { id: '267834450', price: 899, store: 'WB', note: 'Вариант 1 • 899 руб • WB', imgUrl: '' },
+      { id: '267835010', price: 899, store: 'WB', note: 'Вариант 2 • 899 руб • WB', imgUrl: '' },
+      { id: '204319261', price: 2710, store: 'WB', note: '2710 руб • WB', imgUrl: '' },
+      { id: '369062475', price: 1992, store: 'WB', note: 'Вариант 1 • 1992 руб • WB', imgUrl: '' },
+      { id: '369065131', price: 1992, store: 'WB', note: 'Вариант 2 • 1992 руб • WB', imgUrl: '' },
+      { id: '330144480', price: 252, store: 'WB', note: '252 руб • WB', imgUrl: '' },
+      { id: '199613012', price: 362, store: 'WB', note: '362 руб • WB', imgUrl: '' },
+      { id: '286337412', price: 471, store: 'WB', note: '471 руб • WB', imgUrl: '' },
+      { id: '312293715', price: 3655, store: 'WB', note: '3655 руб • WB', imgUrl: '' },
+      { id: '174936999', price: 684, store: 'WB', note: '684 руб • WB', imgUrl: '' },
+      { id: '468453265', price: 990, store: 'WB', note: '990 руб • WB', imgUrl: '' },
+      { id: '340060816', price: 1616, store: 'WB', note: '1616 руб • WB', imgUrl: '' },
+      { id: '710341286', price: 333, store: 'WB', note: '333 руб • WB', imgUrl: '' },
+      { id: '173305375', price: 6565, store: 'WB', note: '6565 руб • WB', imgUrl: '' },
+      { id: '241847200', price: 376, store: 'WB', note: '376 руб • WB', imgUrl: '' },
+      { id: '490521150', price: 527, store: 'WB', note: '527 руб • WB', imgUrl: '' },
     ];
 
     const listEl = document.getElementById('list');
@@ -211,6 +260,8 @@
     const deleteBoughtBtn = document.getElementById('deleteBought');
     const tabBtns = document.querySelectorAll('.tabBtn');
     const emptyState = document.getElementById('emptyState');
+    const ownerBtns = document.querySelectorAll('.ownerBtn');
+    const ownerLabel = document.getElementById('ownerLabel');
 
     const newId = document.getElementById('newId');
     const newPrice = document.getElementById('newPrice');
@@ -239,17 +290,60 @@
     let currentStore = 'all';
     let viewGrid = true;
     let currentTab = 'active';
-    let state = loadState() || [...defaultData];
     let openedItem = null;
+
+    function migrateLegacyArray(arr){
+      return { activeOwner: 'me', lists: { me: arr || [], her: [...herDefaultData] } };
+    }
+
+    function migrateLegacy() {
+      try {
+        const raw = localStorage.getItem(LEGACY_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        localStorage.removeItem(LEGACY_KEY);
+        if (Array.isArray(parsed)) return migrateLegacyArray(parsed);
+        if (parsed && parsed.lists) return parsed;
+      } catch(e){ return null; }
+      return null;
+    }
+
+    function loadState(){
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return migrateLegacyArray(parsed);
+          if (parsed && parsed.lists) return parsed;
+        }
+      } catch(e){}
+      const migrated = migrateLegacy();
+      if (migrated) return migrated;
+      return null;
+    }
+
+    let appState = loadState() || { activeOwner: 'me', lists: { me: [...defaultData], her: [...herDefaultData] } };
+    let state = appState.lists[appState.activeOwner] || [];
+    appState.lists[appState.activeOwner] = state;
+
+    const saveState = () => {
+      // Всегда сохраняем текущее имя владельца и его список
+      appState.activeOwner = currentOwner;
+      appState.lists[currentOwner] = state;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); } catch(e) { console.warn('Не удалось сохранить', e); }
+    };
 
     function fixMojibake() {
       let changed = false;
-      state.forEach(item => {
-        if (!item.note) return;
-        if (/[ÂÃÐÑâ]/.test(item.note)) {
-          item.note = `${item.price} руб • ${item.store}`;
-          changed = true;
-        }
+      Object.values(appState.lists).forEach(list => {
+        list.forEach(item => {
+          if (!item.note) return;
+          if (/[ÂÃÐÑâ]/.test(item.note)) {
+            item.note = `${item.price} руб • ${item.store}`;
+            changed = true;
+          }
+          item.id = String(item.id).replace(/[^0-9]/g,'');
+        });
       });
       if (changed) saveState();
     }
@@ -262,46 +356,30 @@
       if (item.store === 'Другое') return item.note && item.note.startsWith('http') ? item.note : `https://www.google.com/search?q=${encodeURIComponent(item.id)}`;
       return item.note && item.note.startsWith('http') ? item.note : `https://www.google.com/search?q=${encodeURIComponent(item.id)}`;
     };
-    const buildImg = (item) => {
-      if (item.imgUrl && item.imgUrl.trim()) return item.imgUrl;
-      if(item.store === 'WB') {
-        const vol = item.id.slice(0, 3);
-        const part = item.id.slice(0, 5);
-        return `https://basket-0.wbbasket.ru/vol${vol}/part${part}/${item.id}/images/big/1.jpg`;
-      }
-      if(item.store === 'Ozon') return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=Ozon+${item.id}`;
-      if(item.store === 'Yandex') return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=Yandex+${item.id}`;
-      if(item.store === 'Другое') return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=${item.store}+${item.id}`;
-      return `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=${item.store}+${item.id}`;
+
+    const wbHosts = Array.from({ length: 10 }, (_, i) => `https://basket-0${i}.wbbasket.ru`);
+    const buildWbImg = (item, hostIndex = 0) => {
+      const idNum = Number(String(item.id).replace(/\D/g, ''));
+      const vol = Math.floor(idNum / 1e5);
+      const part = Math.floor(idNum / 1e3);
+      const host = wbHosts[hostIndex] || wbHosts[0];
+      return `${host}/vol${vol}/part${part}/${idNum}/images/big/1.jpg`;
+    };
+    const buildImgAlt = (item) => {
+      const idNum = Number(String(item.id).replace(/\D/g, ''));
+      return `https://images.wbstatic.net/big/new/${idNum}-1.jpg`;
     };
 
-    function migrateLegacy() {
-      try {
-        const raw = localStorage.getItem(LEGACY_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-        localStorage.removeItem(LEGACY_KEY);
-        return parsed;
-      } catch(e){
-        return null;
-      }
-    }
+    const buildImg = (item) => {
+      if (item.imgUrl && item.imgUrl.trim()) return item.imgUrl;
+      if(item.store === 'WB') return buildWbImg(item, Number(String(item.id).replace(/\D/g,'')) % 10);
+      if(item.store === 'Ozon') return `https://placehold.co/600x800/f8fafc/cbd5e1?text=Ozon+${item.id}`;
+      if(item.store === 'Yandex') return `https://placehold.co/600x800/f8fafc/cbd5e1?text=Yandex+${item.id}`;
+      if(item.store === 'Другое') return `https://placehold.co/600x800/f8fafc/cbd5e1?text=${item.store}+${item.id}`;
+      return `https://placehold.co/600x800/f8fafc/cbd5e1?text=${item.store}+${item.id}`;
+    };
 
-    function loadState(){
-      const current = (()=>{
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          return raw ? JSON.parse(raw) : null;
-        } catch(e){ return null; }
-      })();
-      if (current) return current;
-      const migrated = migrateLegacy();
-      return migrated || null;
-    }
-    function saveState(){
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) { console.warn('Не удалось сохранить', e); }
-    }
+    let currentOwner = appState.activeOwner || 'me';
 
     function showDetail(item) {
       openedItem = item;
@@ -383,8 +461,34 @@
         clone.querySelector('.price').textContent = formatPrice(item.price);
         clone.querySelector('.note').textContent = item.note || 'Без заметки';
         const img = clone.querySelector('.img');
+        const loadImgWithFallback = (() => {
+          let attempt = 0;
+          const wbFallbacks = wbHosts.length;
+          return () => {
+            if(item.store === 'WB' && attempt < wbFallbacks){
+              img.src = buildWbImg(item, attempt);
+              attempt++;
+              return;
+            }
+            if(item.store === 'WB' && attempt === wbFallbacks){
+              img.src = buildImgAlt(item);
+              attempt++;
+              return;
+            }
+            if(item.store === 'WB' && attempt === wbFallbacks + 1){
+              img.src = `https://placehold.co/600x800/f8fafc/cbd5e1?text=WB+${item.id}`;
+              attempt++;
+              return;
+            }
+            if(item.store !== 'WB') {
+              img.src = `https://placehold.co/600x800/f8fafc/cbd5e1?text=${item.store}+${item.id}`;
+              attempt++;
+              return;
+            }
+          };
+        })();
         img.src = buildImg(item);
-        img.onerror = () => img.src = `https://dummyimage.com/600x800/f8fafc/cbd5e1&text=${item.store}+${item.id}`;
+        img.onerror = () => loadImgWithFallback();
         const link = buildLink(item);
         clone.querySelector('.open').onclick = (e) => { e.stopPropagation(); window.open(link, '_blank'); };
         clone.querySelector('.copy').onclick = async (e) => {
@@ -433,6 +537,7 @@
       });
       totalCountEl.textContent = state.length;
       updateCount();
+      ownerLabel.textContent = ownerNames[currentOwner] || (currentOwner === 'me' ? 'Игорь' : 'Полина');
     }
 
     function updateCount() {
@@ -481,8 +586,12 @@
 
     const restoreDefaultsBtn = document.getElementById('restoreDefaults');
     restoreDefaultsBtn.onclick = () => {
-      if(!confirm('Вернуть стартовый список твоих товаров? Текущие изменения будут потеряны.')) return;
-      state = [...defaultData];
+      if(!confirm('Сбросить текущий список? Текущие изменения будут потеряны.')) return;
+      if(currentOwner === 'me') {
+        state = [...defaultData];
+      } else {
+        state = [...herDefaultData];
+      }
       saveState();
       render();
       hideDetail();
@@ -508,31 +617,44 @@
     closeDetail.onclick = hideDetail;
     detail.addEventListener('click', (e)=>{ if(e.target === detail) hideDetail(); });
 
-    const urlParams = new URLSearchParams(location.search);
-    const shared = urlParams.get('d');
-    if(shared){
-      try {
-        const data = JSON.parse(atob(shared));
-        if(Array.isArray(data.items)){
-          state = data.items;
-          saveState();
-          render();
-          alert('Загружен общий список. Теперь он сохранён локально.');
-        }
-      } catch(err){
-        console.warn('Не удалось загрузить общий список', err);
-      }
-    }
+    ownerBtns.forEach(btn => {
+      btn.onclick = () => {
+        const owner = btn.dataset.owner;
+        if(owner === currentOwner) return;
+        // сохранить текущий список перед переключением
+        appState.lists[currentOwner] = state;
+        // переключиться и загрузить новый список, если его нет — взять дефолт
+        currentOwner = owner;
+        state = appState.lists[currentOwner] || (currentOwner === 'me' ? [...defaultData] : [...herDefaultData]);
+        appState.lists[currentOwner] = state;
+        ownerBtns.forEach(b=>b.classList.remove('pill-active'));
+        btn.classList.add('pill-active');
+        saveState();
+        render();
+        hideDetail();
+      };
+    });
 
-    // Принудительно обновим устаревшее состояние, если ключ сменился
-    if(!loadState()) {
-      state = [...defaultData];
-      saveState();
+    // Если нет сохранённого состояния — загрузим дефолт
+    if(!appState || !appState.lists || !Array.isArray(appState.lists[currentOwner])) {
+      appState = { activeOwner:'me', lists:{ me:[...defaultData], her:[...herDefaultData] } };
+      state = appState.lists[currentOwner];
     }
 
     fixMojibake();
     render();
     saveState();
+
+    // Идеи: показать/спрятать
+    const toggleIdeas = document.getElementById('toggleIdeas');
+    const ideasList = document.getElementById('ideasList');
+    if(toggleIdeas && ideasList){
+      toggleIdeas.addEventListener('click', () => {
+        const isHidden = ideasList.classList.contains('hidden');
+        ideasList.classList.toggle('hidden');
+        toggleIdeas.textContent = isHidden ? 'Скрыть' : 'Показать';
+      });
+    }
   </script>
 </body>
 </html>
